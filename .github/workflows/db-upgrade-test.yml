@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Wait for PostgreSQL to Start
         run: sleep 5
-      - name: Run DB Test
+      - name: Run DB Upgrade Test
         run: |
           cd ${{ inputs.DB_LOCATION }}
           export SU_USER_PWD=postgres
@@ -32,6 +32,7 @@ jobs:
           sed -i 's/DB_SERVERIP=.*/DB_SERVERIP=localhost/g' upgrade.properties
           sed -i 's/DB_PORT=.*/DB_PORT=5432/g' upgrade.properties
           sed -i 's/SU_USER=.*/SU_USER=postgres/g' upgrade.properties
+          export PGPASSWORD=$SU_USER_PWD
           chmod +x upgrade.sh
           ./upgrade.sh upgrade.properties
 
