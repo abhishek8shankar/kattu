@@ -1,0 +1,95 @@
+name: Verify keycloak-init Roles
+
+on:
+  workflow_call:
+    inputs:
+      SERVICE_NAME:
+        required: true
+        type: string
+      SERVICE_LOCATION:
+        required: true
+        type: string
+      BUILD_ARTIFACT:
+        required: false
+        type: string
+        default: false
+      NPM_BUILD:
+        required: false
+        type: boolean
+        default: false
+      ONLY_DOCKER:
+        required: false
+        type: boolean
+        default: false
+
+    secrets:
+      RELEASE_DOCKER_HUB:
+        required: true
+      ACTOR_DOCKER_HUB:
+        required: true
+      DEV_NAMESPACE_DOCKER_HUB:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+
+jobs:
+  verify-roles:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Verify roles
+        run: |
+          #!/bin/bash
+
+          set -e
+
+          # Path to the YAML file
+          yaml_file='./charts/keycloak-init/values.yaml'
+
+          # Extract roles from YAML file
+          roles=$(yq eval '.roles[]' "$yaml_file" | sort -u)
+          saroles=$(yq eval '.clients[].saroles[]' "$yaml_file" | sort -u)
+
+          # Convert to arrays
+          IFS=$'\n' read -r -d '' -a roles_array <<< "$roles"
+          IFS=$'\n' read -r -d '' -a saroles_array <<< "$saroles"
+
+          # Function to find missing and extra roles
+          find_difference() {
+              local array1=("${!1}")
+              local array2=("${!2}")
+
+              for role in "${array2[@]}"; do
+                  if [[ ! " ${array1[@]} " =~ " ${role} " ]]; then
+                      echo "$role"
+                  fi
+              done
+          }
+
+          # Find missing roles in 'roles'
+          echo "Checking for roles missing from 'roles':"
+          missing_roles=$(find_difference "roles_array[@]" "saroles_array[@]")
+          if [ -z "$missing_roles" ]; then
+              echo "No missing roles."
+          else
+              echo "$missing_roles"
+          fi
+
+          # Find extra roles in 'roles'
+          echo "Checking for extra roles in 'roles' not found in 'saroles':"
+          extra_roles=$(find_difference "saroles_array[@]" "roles_array[@]")
+          if [ -z "$extra_roles" ]; then
+              echo "No extra roles."
+          else
+              echo "$extra_roles"
+          fi
+          
+      - uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,commit,workflow,job # selectable (default: repo,message)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
+        if: "${{ github.event_name != 'pull_request' && failure() }}" # Pick up events even if the job fails or is canceled.
