@@ -2,35 +2,6 @@ name: Verify keycloak-init Roles
 
 on:
   workflow_call:
-    inputs:
-      SERVICE_NAME:
-        required: true
-        type: string
-      SERVICE_LOCATION:
-        required: true
-        type: string
-      BUILD_ARTIFACT:
-        required: false
-        type: string
-        default: false
-      NPM_BUILD:
-        required: false
-        type: boolean
-        default: false
-      ONLY_DOCKER:
-        required: false
-        type: boolean
-        default: false
-
-    secrets:
-      RELEASE_DOCKER_HUB:
-        required: true
-      ACTOR_DOCKER_HUB:
-        required: true
-      DEV_NAMESPACE_DOCKER_HUB:
-        required: true
-      SLACK_WEBHOOK_URL:
-        required: true
 
 jobs:
   verify-roles:
