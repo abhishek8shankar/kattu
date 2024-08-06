@@ -68,6 +68,25 @@ jobs:
           echo "CHART_PUBLISH=NO" >> $GITHUB_ENV
         if: "${{ github.event_name == 'pull_request' }}"
 
+      - name: Check saroles in default role section
+        run: |
+          DEFAULT_ROLES=$(grep -A 1000 "roles:" keycloak.yaml | grep -B 1000 "client_scopes:" | grep -v "roles:" | grep -v "client_scopes:" | sed 's/^[ \t-]*//;s/[ \t-]*$//' | sort)
+          SAROLES=$(grep "saroles:" values.yaml -A 1000 | grep -v "saroles:" | grep -E -o '\- [A-Z_]*' | sed 's/^- //')
+          
+          MISSING_ROLES=""
+          for ROLE in $SAROLES; do
+            if ! grep -q "$ROLE" <<< "$DEFAULT_ROLES"; then
+              MISSING_ROLES+="$ROLE\n"
+            fi
+          done
+
+          if [ -n "$MISSING_ROLES" ]; then
+            echo -e "The following saroles are missing from the default role section:\n$MISSING_ROLES"
+            exit 1
+          else
+            echo "All saroles are included in the default role section."
+          fi
+
       - name: Get helm charts list
         run: |
           CHARTS_MODIFIED=$( git log -m -1 --name-only --pretty="" | awk -F '/' '/charts/{print $2}' | sort | uniq | sed -E 's/(\S+)/^&$/g' | tr ' ' '|' )
@@ -97,25 +116,6 @@ jobs:
           linting_health_check_schema_yaml_url: "${{ inputs.LINTING_HEALTH_CHECK_SCHEMA_YAML_URL }}"
           dependencies: "${{ inputs.DEPENDENCIES }}"
           
-      - name: Check saroles in default role section
-        run: |
-          DEFAULT_ROLES=$(grep -A 1000 "roles:" keycloak.yaml | grep -B 1000 "client_scopes:" | grep -v "roles:" | grep -v "client_scopes:" | sed 's/^[ \t-]*//;s/[ \t-]*$//' | sort)
-          SAROLES=$(grep "saroles:" values.yaml -A 1000 | grep -v "saroles:" | grep -E -o '\- [A-Z_]*' | sed 's/^- //')
-          
-          MISSING_ROLES=""
-          for ROLE in $SAROLES; do
-            if ! grep -q "$ROLE" <<< "$DEFAULT_ROLES"; then
-              MISSING_ROLES+="$ROLE\n"
-            fi
-          done
-
-          if [ -n "$MISSING_ROLES" ]; then
-            echo -e "The following saroles are missing from the default role section:\n$MISSING_ROLES"
-            exit 1
-          else
-            echo "All saroles are included in the default role section."
-          fi
-
       # Commented below tasks as it cannot test MOSIP helm/charts deployment due to dependencies issues
       #- name: Create kind v1.21.1 cluster
       #  uses: helm/kind-action@v1.4.0
