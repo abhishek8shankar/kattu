@@ -16,12 +16,53 @@ jobs:
 
           set -e
 
+          # Function to install yq
+          install_yq() {
+            echo "Installing yq..."
+            if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+              curl -L https://github.com/mikefarah/yq/releases/download/v4.19.2/yq_linux_amd64 -o /usr/local/bin/yq
+              chmod +x /usr/local/bin/yq
+            elif [[ "$OSTYPE" == "darwin"* ]]; then
+              brew install yq
+            else
+              echo "Unsupported OS. Please install yq manually."
+              exit 1
+            fi
+          }
+
+          # Check if yq is installed
+          if ! command -v yq &> /dev/null; then
+            install_yq
+          fi
+
           # Path to the YAML file
           yaml_file='./charts/keycloak-init/values.yaml'
 
+          # Check if the YAML file exists
+          if [ ! -f "$yaml_file" ]; then
+            echo "File not found: $yaml_file"
+            exit 1
+          fi
+
           # Extract roles from YAML file
-          roles=$(yq eval '.roles[]' "$yaml_file" | sort -u)
-          saroles=$(yq eval '.clients[].saroles[]' "$yaml_file" | sort -u)
+          echo "Extracting roles from $yaml_file..."
+          roles=$(yq eval '.roles[]' "$yaml_file" 2>/dev/null | sort -u)
+          if [ $? -ne 0 ]; then
+            echo "Error extracting roles from YAML file."
+            exit 1
+          fi
+
+          saroles=$(yq eval '.clients[].saroles[]' "$yaml_file" 2>/dev/null | sort -u)
+          if [ $? -ne 0 ]; then
+            echo "Error extracting saroles from YAML file."
+            exit 1
+          fi
+
+          # Print extracted roles for debugging
+          echo "Roles extracted:"
+          echo "$roles"
+          echo "SARoles extracted:"
+          echo "$saroles"
 
           # Convert to arrays
           IFS=$'\n' read -r -d '' -a roles_array <<< "$roles"
@@ -32,11 +73,14 @@ jobs:
               local array1=("${!1}")
               local array2=("${!2}")
 
+              local missing=()
               for role in "${array2[@]}"; do
                   if [[ ! " ${array1[@]} " =~ " ${role} " ]]; then
-                      echo "$role"
+                      missing+=("$role")
                   fi
               done
+
+              echo "${missing[@]}"
           }
 
           # Find missing roles in 'roles'
