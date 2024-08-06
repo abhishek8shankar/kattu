@@ -46,17 +46,8 @@ jobs:
 
           # Extract roles from YAML file
           echo "Extracting roles from $yaml_file..."
-          roles=$(yq eval '.roles[]' "$yaml_file" 2>/dev/null | sort -u)
-          if [ $? -ne 0 ]; then
-            echo "Error extracting roles from YAML file."
-            exit 1
-          fi
-
-          saroles=$(yq eval '.clients[].saroles[]' "$yaml_file" 2>/dev/null | sort -u)
-          if [ $? -ne 0 ]; then
-            echo "Error extracting saroles from YAML file."
-            exit 1
-          fi
+          roles=$(yq eval '.roles[]' "$yaml_file" 2>/dev/null || { echo "Error extracting roles from YAML file."; exit 1; })
+          saroles=$(yq eval '.clients[].saroles[]' "$yaml_file" 2>/dev/null || { echo "Error extracting saroles from YAML file."; exit 1; })
 
           # Print extracted roles for debugging
           echo "Roles extracted:"
