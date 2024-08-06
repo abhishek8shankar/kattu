@@ -70,13 +70,13 @@ jobs:
 
       - name: Check saroles in default role section
         run: |
-          DEFAULT_ROLES=$(grep -A 1000 "roles:" keycloak.yaml | grep -B 1000 "client_scopes:" | grep -v "roles:" | grep -v "client_scopes:" | sed 's/^[ \t-]*//;s/[ \t-]*$//' | sort)
-          SAROLES=$(grep "saroles:" values.yaml -A 1000 | grep -v "saroles:" | grep -E -o '\- [A-Z_]*' | sed 's/^- //')
+          roles=$(grep -A 1000 "roles:" values.yaml | grep -B 1000 "client_scopes:" | grep -v "roles:" | grep -v "client_scopes:" | sed 's/^[ \t-]*//;s/[ \t-]*$//' | sort)
+          saroles=$(grep "saroles:" values.yaml -A 1000 | grep -v "saroles:" | grep -E -o '\- [A-Z_]*' | sed 's/^- //')
           
           MISSING_ROLES=""
-          for ROLE in $SAROLES; do
-            if ! grep -q "$ROLE" <<< "$DEFAULT_ROLES"; then
-              MISSING_ROLES+="$ROLE\n"
+          for ROLE in $saroles; do
+            if ! grep -q "$roles" <<< "$roles"; then
+              MISSING_ROLES+="$role\n"
             fi
           done
 
